@@ -47,9 +47,11 @@ if 제출:
     st.table(pd.DataFrame([data]))
 
     pdf_buffer = generate_simple_pdf(data)
-    st.download_button(
-        label="의뢰서 PDF 다운로드",
-        data=pdf_buffer,
-        file_name=f"의뢰서_{고객사명}.txt",
-        mime="text/plain"
+st.download_button(
+    label="의뢰서 PDF 다운로드",
+    data=pdf_buffer,
+    file_name=f"의뢰서_{고객사명}.pdf",
+    mime="application/pdf"
+)
+
     )
