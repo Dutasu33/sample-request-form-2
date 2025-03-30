@@ -4,22 +4,18 @@ import pandas as pd
 from datetime import datetime
 from io import BytesIO
 
-def generate_dummy_pdf(data):
+# 간단한 텍스트 기반 PDF 생성 함수 (실제는 .txt 형태)
+def generate_simple_pdf(data):
     buffer = BytesIO()
-    buffer.write(f"고객사명: {data['고객사명']}\n".encode())
-    buffer.write(f"담당자: {data['담당자']}\n".encode())
-    buffer.write(f"상담 유형: {data['상담유형']}\n".encode())
-    buffer.write(f"제품명: {data['제품명']}\n".encode())
-    buffer.write(f"제품유형: {data['제품유형']}\n".encode())
-    buffer.write(f"기능/컨셉: {data['기능']}\n".encode())
-    buffer.write(f"요청 수량/일정: {data['수량/일정']}\n".encode())
-    buffer.write(f"희망 단가/조건: {data['단가']}\n".encode())
-    buffer.write(f"기타 요청 사항: {data['기타']}\n".encode())
-    buffer.write(f"작성일: {datetime.today().strftime('%Y-%m-%d')}\n".encode())
+    content = ""
+    for key, value in data.items():
+        content += f"{key}: {value}\n"
+    content += f"작성일: {datetime.today().strftime('%Y-%m-%d')}\n"
+    buffer.write(content.encode())
     buffer.seek(0)
     return buffer
 
-st.title("제품 개발 상담 입력폼 (Streamlit Demo)")
+st.title("제품 개발 상담 입력폼 (간단 PDF 버전)")
 
 with st.form("sample_form"):
     고객사명 = st.text_input("고객사명")
@@ -50,10 +46,10 @@ if 제출:
     st.subheader("입력 요약")
     st.table(pd.DataFrame([data]))
 
-    pdf_buffer = generate_dummy_pdf(data)
+    pdf_buffer = generate_simple_pdf(data)
     st.download_button(
         label="의뢰서 PDF 다운로드",
         data=pdf_buffer,
-        file_name=f"의뢰서_{고객사명}.pdf",
-        mime="application/pdf"
+        file_name=f"의뢰서_{고객사명}.txt",
+        mime="text/plain"
     )
