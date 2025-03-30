@@ -1,9 +1,30 @@
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 from io import BytesIO
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
-# 간단한 텍스트 기반 PDF 생성 함수 (실제는 .txt 형태)
+# 📌 Google Sheets 연동을 위한 설정
+def connect_google_sheet(sheet_name="상담의뢰리스트"):
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+    client = gspread.authorize(creds)
+    sheet = client.open(sheet_name).sheet1
+    return sheet
+
+def save_to_google_sheet(data):
+    try:
+        sheet = connect_google_sheet()
+        row = list(data.values())
+        sheet.append_row(row)
+        return True
+    except Exception as e:
+        st.error(f"Google Sheets 저장 중 오류 발생: {e}")
+        return False
+
+# PDF 텍스트 생성 함수
 def generate_simple_pdf(data):
     buffer = BytesIO()
     content = ""
@@ -14,7 +35,7 @@ def generate_simple_pdf(data):
     buffer.seek(0)
     return buffer
 
-st.title("제품 개발 상담 입력폼 (간단 PDF 버전)")
+st.title("제품 개발 상담 입력폼 (Google Sheets 연동 + PDF)")
 
 with st.form("sample_form"):
     고객사명 = st.text_input("고객사명")
@@ -39,16 +60,21 @@ if 제출:
         "수량/일정": 수량일정,
         "단가": 단가,
         "기타": 기타,
+        "작성일": datetime.today().strftime("%Y-%m-%d")
     }
-    st.success("의뢰서가 접수되었습니다!")
 
+    st.success("의뢰서가 접수되었습니다!")
     st.subheader("입력 요약")
     st.table(pd.DataFrame([data]))
 
+    # Google Sheets 저장
+    save_to_google_sheet(data)
+
+    # PDF 생성 및 다운로드
     pdf_buffer = generate_simple_pdf(data)
     st.download_button(
         label="의뢰서 PDF 다운로드",
         data=pdf_buffer,
-        file_name=f"의뢰서_{고객사명}.txt",
-        mime="text/plain"
+        file_name=f"의뢰서_{고객사명}.pdf",
+        mime="application/pdf"
     )
