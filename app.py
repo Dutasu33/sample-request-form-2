@@ -1,72 +1,63 @@
 
 import streamlit as st
 import pandas as pd
-from datetime import datetime
-from io import BytesIO
-import os
+import re
 
-# CSV 저장 함수
-def save_to_csv(data_dict, filename="상담의뢰_목록.csv"):
-    df = pd.DataFrame([data_dict])
-    if os.path.exists(filename):
-        df.to_csv(filename, mode='a', header=False, index=False)
-    else:
-        df.to_csv(filename, index=False)
+st.set_page_config(page_title="바디케어 샘플 추천 시스템", page_icon="🧴")
+st.title("🧴 바디케어 샘플 자동 추천 시스템")
 
-# TXT 파일 생성
-def generate_txt(data_dict):
-    buffer = BytesIO()
-    content = ""
-    for key, value in data_dict.items():
-        content += f"{key}: {value}\n"
-    content += f"작성일: {datetime.today().strftime('%Y-%m-%d')}\n"
-    buffer.write(content.encode())
-    buffer.seek(0)
-    return buffer
+product_name = st.text_input("제품명 입력", "오브제 바이 쿤달 바디워시")
+product_type = st.selectbox("제품 타입 선택", ["바디워시", "스크럽", "핸드워시"])
+customer_text = st.text_area("요구사항을 자유롭게 입력하세요",
+    "끈적임 없고 세정력이 강하며 향이 오래가는 제품을 원해요")
 
-# 입력폼
-st.title("제품 개발 상담 입력폼 (CSV 저장 + TXT 다운로드)")
+def extract_keywords(text):
+    keywords = {}
+    if re.search("끈적.*않", text): keywords['끈적임'] = '낮음'
+    if re.search("세정력.*강|깨끗", text): keywords['세정력'] = '강함'
+    if re.search("풍성.*거품", text): keywords['거품감'] = '풍성'
+    if re.search("향.*오래|지속", text): keywords['지속력'] = '높음'
+    if re.search("머스크", text): keywords['향'] = '머스크'
+    return keywords
 
-with st.form("form"):
-    회사명 = st.text_input("회사명")
-    담당자 = st.text_input("담당자")
-    이메일 = st.text_input("이메일 / 휴대폰")
-    제품명 = st.text_input("제품명 (가칭)")
-    제품유형 = st.text_input("제품유형 / 용량")
-    용기사양 = st.text_input("용기사양")
-    출시일 = st.text_input("희망 출시일")
-    초도수량 = st.text_input("초도수량(MOQ)")
-    판매국가 = st.text_input("판매국가")
-    기능성 = st.text_input("기능성")
-    작성일 = datetime.today().strftime("%Y-%m-%d")
-    제출 = st.form_submit_button("제출")
+keywords = extract_keywords(customer_text)
+st.subheader("🔍 추출된 사용감 키워드")
+st.json(keywords)
 
-if 제출:
-    data = {
-        "회사명": 회사명,
-        "담당자": 담당자,
-        "이메일": 이메일,
-        "제품명": 제품명,
-        "제품유형": 제품유형,
-        "용기사양": 용기사양,
-        "희망출시일": 출시일,
-        "초도수량": 초도수량,
-        "판매국가": 판매국가,
-        "기능성": 기능성,
-        "작성일": 작성일
-    }
+cluster_profiles = pd.DataFrame({
+    '클러스터': [0, 1, 2],
+    '끈적임': [2, 0, 1],
+    '세정력': [1, 2, 1],
+    '지속력': [0, 2, 1],
+}).set_index('클러스터')
 
-    st.success("📬 의뢰서가 접수되었습니다!")
-    st.table(pd.DataFrame([data]))
+scale_map = {'낮음': 0, '중간': 1, '높음': 2, '강함': 2, '약함': 0}
+input_vector = {}
+for k in cluster_profiles.columns:
+    v = keywords.get(k)
+    if v: input_vector[k] = scale_map.get(v, 1)
 
-    # CSV 저장
-    save_to_csv(data)
+def compute_distance(row, target):
+    score = 0
+    count = 0
+    for k, v in target.items():
+        if k in row:
+            score += (row[k] - v) ** 2
+            count += 1
+    return (score / count) ** 0.5 if count > 0 else float('inf')
 
-    # TXT 다운로드
-    txt_file = generate_txt(data)
-    st.download_button(
-        label="의뢰서 TXT 다운로드",
-        data=txt_file,
-        file_name=f"의뢰서_{회사명}.txt",
-        mime="text/plain"
-    )
+cluster_profiles['distance'] = cluster_profiles.apply(lambda row: compute_distance(row, input_vector), axis=1)
+recommended_cluster = cluster_profiles['distance'].idxmin()
+
+st.subheader("✅ 추천 결과")
+st.success(f"추천 클러스터: 클러스터 {recommended_cluster}번")
+
+sample_recommendations = {
+    0: ["드리오페 바디워시 자스민머스크", "라라츄 홈쇼핑 바디워시"],
+    1: ["쿤달 퓨어 바디워시 베이비파우더", "쿤달 퓨어 바디워시 화이트머스크"],
+    2: ["낫포유 클리어 바디스크럽", "슬로우허밍 바디스크럽"]
+}
+
+st.subheader("🧪 유사 추천 처방")
+for item in sample_recommendations.get(recommended_cluster, []):
+    st.markdown(f"- {item}")
