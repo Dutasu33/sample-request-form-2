@@ -1,66 +1,49 @@
-
 import streamlit as st
 import pandas as pd
-from io import BytesIO
-from reportlab.pdfgen import canvas
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.cluster import KMeans
+from PIL import Image
+import os
 
-# ▶ Load 처방DB
-df = pd.read_excel("처방DB_샘플_Streamlit용.xlsx")
+# 더미 데이터
+data = {
+    "처방ID": [f"P{str(i+1).zfill(3)}" for i in range(20)],
+    "사용감설명": [
+        "끈적임 없이 촉촉하고 산뜻함", "세정력이 좋고 거품이 풍성함", "보습감이 뛰어나고 잔향이 오래 감",
+        "피부가 편안하고 순한 사용감", "거칠지 않고 부드럽게 각질 제거됨", "세정 후 당김 없이 촉촉함",
+        "향이 오래가고 부드러운 마무리감", "시원하고 개운한 사용감", "스크럽 입자가 자극 없이 부드러움",
+        "상쾌하고 깔끔한 세정력", "풍성한 거품과 은은한 향", "흡수가 빠르고 산뜻한 마무리감",
+        "부드럽게 마사지 되며 보습력 우수", "촉촉하지만 번들거리지 않음", "끈적임 없이 산뜻하게 흡수",
+        "상쾌하고 향기로운 사용감", "자극 없이 세정되며 부드러움", "고급스러운 향이 오래 지속",
+        "세정 후 피부가 매끄럽고 촉촉함", "빠르게 흡수되며 무향에 가까움"
+    ]
+}
+df = pd.DataFrame(data)
 
-st.set_page_config(page_title="제품 개발 의뢰 자동화", layout="centered")
-st.title("🧴 제품 개발 의뢰 자동화 시스템")
+# 벡터화 및 클러스터링
+vectorizer = TfidfVectorizer()
+tfidf_matrix = vectorizer.fit_transform(df["사용감설명"])
+kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
+df["클러스터"] = kmeans.fit_predict(tfidf_matrix)
 
-st.header("1. 최초 의뢰서 입력")
-with st.form("inquiry_form"):
-    company = st.text_input("회사명")
-    manager = st.text_input("담당자명")
-    product = st.text_input("제품명(가칭)")
-    ptype = st.selectbox("제품유형", df["제품유형"].unique())
-    form = st.selectbox("제형", df["제형"].unique())
-    function = st.text_input("요청 기능성 (쉼표로 구분)")
-    vegan = st.radio("비건 여부", ["Y", "N"])
-    submitted = st.form_submit_button("제출")
+# 앱 UI
+st.set_page_config(page_title="힘들다연습 - 클러스터 처방 추천", page_icon="🧴")
+st.title("💬 VOC 기반 클러스터 예측 및 사용감 키워드 시각화")
 
-if submitted:
-    st.header("2. 유사 처방 추천 (AI 기반)")
-    df["검색키"] = df["제형"] + " " + df["기능성"] + " " + df["비건여부"]
-    user_query = f"{form} {function} {vegan}"
+voc_input = st.text_area("📥 제품 사용감 VOC를 입력하세요:")
 
-    vect = TfidfVectorizer()
-    tfidf_matrix = vect.fit_transform(df["검색키"])
-    query_vec = vect.transform([user_query])
-    similarity = cosine_similarity(query_vec, tfidf_matrix).flatten()
+if voc_input:
+    voc_vec = vectorizer.transform([voc_input])
+    cluster = kmeans.predict(voc_vec)[0]
+    st.success(f"예측된 클러스터: {cluster}번")
 
-    df["유사도"] = similarity
-    top3 = df.sort_values(by="유사도", ascending=False).head(3)
+    st.subheader("📋 해당 클러스터의 대표 처방")
+    top3 = df[df["클러스터"] == cluster].head(3)
+    st.table(top3[["처방ID", "사용감설명"]])
 
-    selected = st.radio("추천 처방 중 선택:", top3["처방명"].tolist())
-
-    if selected:
-        st.header("3. 최종 의뢰서 PDF 생성")
-        info = top3[top3["처방명"] == selected].iloc[0]
-
-        buffer = BytesIO()
-        pdf = canvas.Canvas(buffer)
-        pdf.drawString(100, 800, f"제품 개발 의뢰서 - {product}")
-        pdf.drawString(100, 780, f"회사명: {company}")
-        pdf.drawString(100, 760, f"담당자명: {manager}")
-        pdf.drawString(100, 740, f"제품유형: {ptype} / 제형: {form} / 기능성: {function}")
-        pdf.drawString(100, 720, f"선택 처방: {selected}")
-        pdf.drawString(100, 700, f"주요성분: {info['주요성분']}")
-        pdf.drawString(100, 680, f"거품: {info['거품의크기']}, 탄력성: {info['거품의탄력성']}")
-        pdf.drawString(100, 660, f"보습력: {info['보습력']}, 산뜻함: {info['산뜻함']}, 촉촉함: {info['촉촉함']}")
-        pdf.drawString(100, 640, f"피부타입: {info['피부타입추천']}, 계절: {info['권장사용시기']}")
-        pdf.drawString(100, 620, f"제품포지셔닝: {info['제품포지셔닝']}")
-        pdf.showPage()
-        pdf.save()
-        buffer.seek(0)
-
-        st.download_button(
-            label="📄 최종 의뢰서 PDF 다운로드",
-            data=buffer,
-            file_name=f"{product}_의뢰서.pdf",
-            mime="application/pdf"
-        )
+    st.subheader("🖼️ 클러스터 사용감 키워드 시각화")
+    image_path = f"wordclouds/cluster_{cluster}.png"
+    if os.path.exists(image_path):
+        st.image(Image.open(image_path), caption=f"Cluster {cluster} WordCloud", use_column_width=True)
+else:
+    st.info("왼쪽에 VOC를 입력하면 클러스터와 대표 처방이 표시됩니다.")
