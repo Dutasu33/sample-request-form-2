@@ -3,3 +3,4 @@ pandas
 scikit-learn
 fpdf
 openpyxl
+google-auth-oauthlib
