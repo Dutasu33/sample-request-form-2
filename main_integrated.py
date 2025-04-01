@@ -128,7 +128,7 @@ if submitted:
             txt = f"{row['처방ID']} - {row['처방명']} / 유사도: {row['유사도']:.2f}"
             pdf.cell(200, 10, txt=txt, ln=1)
 
-        pdf_path = "/mnt/data/recommendation_report.pdf"
+        pdf_path = "recommendation_report.pdf"  # ✅ 상대 경로로 변경!
         pdf.output(pdf_path)
         return pdf_path
 
