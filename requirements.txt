@@ -1,6 +1,6 @@
 streamlit
 pandas
-scikit-learn
-fpdf
-openpyxl
+google-auth
 google-auth-oauthlib
+google-api-python-client
+requests
