@@ -117,16 +117,17 @@ if submitted:
 
     # Step 3: PDF Report Generator
     def create_pdf(data):
-        os.makedirs("outputs", exist_ok=True)  # 폴더 자동 생성 💡
         pdf = FPDF()
         pdf.add_page()
         pdf.add_font("Nanum", "", "NanumGothic.ttf", uni=True)
         pdf.set_font("Nanum", "", 12)
+
         pdf.cell(200, 10, txt="유사 처방 추천 보고서", ln=1, align='C')
         pdf.ln(10)
         for index, row in data.iterrows():
             txt = f"{row['처방ID']} - {row['처방명']} / 유사도: {row['유사도']:.2f}"
             pdf.cell(200, 10, txt=txt, ln=1)
+
         pdf_path = "/mnt/data/recommendation_report.pdf"
         pdf.output(pdf_path)
         return pdf_path
