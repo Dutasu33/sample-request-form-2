@@ -117,6 +117,7 @@ if submitted:
 
     # Step 3: PDF Report Generator
     def create_pdf(data):
+        os.makedirs("outputs", exist_ok=True)  # 폴더 자동 생성 💡
         pdf = FPDF()
         pdf.add_page()
         pdf.add_font("Nanum", "", "NanumGothic.ttf", uni=True)
