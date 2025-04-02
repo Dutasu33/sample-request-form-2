@@ -100,7 +100,7 @@ def save_to_google_sheets(data):
         return True
 
     except Exception as e:
-        st.error(f"📛 Google Sheets 저장 실패: {e}")
+        st.error(f"📛 Google Sheets 저장 실패: {repr(e)}")
         return False
 
 # 페이지 설정
