@@ -64,8 +64,8 @@ def create_pdf(prescription_id, data, similar_list):
     return filename
 
 def send_email_with_pdf(to_emails, subject, body, pdf_path):
-    from_email = st.secrets["email"]["from"]
-    password = st.secrets["email"]["password"]
+    from_email = "johnsonlee333@gmail.com"
+    password = "tgtjkytyastjprsq"
     msg = MIMEMultipart()
     msg['From'] = from_email
     msg['To'] = ", ".join(to_emails)
@@ -193,7 +193,7 @@ with tabs[2]:
                 mlb = MultiLabelBinarizer()
                 기능성_encoded = mlb.fit_transform(df["기능성"])
                 encoded = pd.get_dummies(df.drop("기능성", axis=1))
-                X = pd.concat([encoded, pd.DataFrame(기능성_encoded)], axis=1)
+                X.columns = X.columns.astype(str)
                 kmeans = KMeans(n_clusters=4, random_state=42).fit(X)
                 cluster_map = {id_: label for id_, label in zip(keys, kmeans.labels_)}
                 current_cluster = cluster_map.get(current_id, -1)
