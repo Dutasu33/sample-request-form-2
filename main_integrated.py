@@ -12,6 +12,7 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import json
 
 # 초기화
 if 'form_db' not in st.session_state:
