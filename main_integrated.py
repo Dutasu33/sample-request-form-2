@@ -86,21 +86,21 @@ def save_to_google_sheets(data):
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         
-        # ✅ secrets.toml에서 gcp 섹션을 가져와 임시 파일로 저장
-        creds_dict = st.secrets["gcp"]
+        # ✅ secrets.toml → credentials.json 생성
+        creds_dict = dict(st.secrets["gcp"])  # AttrDict → dict
         with open("credentials.json", "w") as f:
             json.dump(creds_dict, f)
 
-        # ✅ gspread 인증
         creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
         client = gspread.authorize(creds)
-
+        
         sheet = client.open("화장품_의뢰DB").sheet1
-        row = [data.get(k, '') if not isinstance(data.get(k, ''), list) else ", ".join(data.get(k, '')) for k in data]
+        row = [data.get(k, "") if not isinstance(data.get(k, ""), list) else ", ".join(data.get(k, "")) for k in data]
         sheet.append_row(row)
         return True
+
     except Exception as e:
-        st.error(f"Google Sheets 저장 실패: {e}")
+        st.error(f"📛 Google Sheets 저장 실패: {e}")
         return False
 
 # 페이지 설정
