@@ -305,6 +305,7 @@ elif recommend_type == "클러스터 기반":
     except Exception as e:
         st.warning(f"⚠️ 클러스터링 실패: {e}")
 
+    # ✅ 들여쓰기 오류 수정 및 전체 조건문 구조 보완
     if len(recommend_db) < 2:
         st.warning("⚠️ 추천할 유사 처방이 충분하지 않습니다.")
     elif current_id not in recommend_db:
