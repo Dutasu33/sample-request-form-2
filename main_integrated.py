@@ -167,7 +167,7 @@ with tabs[0]:
             email1 = st.text_input("고객사 담당자 이메일")
             email2 = st.text_input("연구원 대표 이메일")
         feel = st.text_area("사용감 설명")
-        sample_date = st.date_input("샘플 송부 예정일", value=datetime.today()).strftime("%Y-%m-%d")
+        sample_date = st.date_input("샘플 송부 요청일", value=datetime.today()).strftime("%Y-%m-%d")
         submitted = st.form_submit_button("등록하기")
         if submitted:
             pid = generate_prescription_id()
@@ -177,7 +177,7 @@ with tabs[0]:
                 "주요성분": ingredients, "기능성": functions, "사용감": feel,
                 "입력일": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "고객사": customer, "고객사담당자이메일": email1, "연구원대표이메일": email2,
-                "샘플송부요청일": sample_date
+                "샘플 송부 요청일": sample_date
             }
             st.success(f"✅ 의뢰 등록 완료! 등록번호: {pid}")
 # 🔍 조회/수정 탭 구현
