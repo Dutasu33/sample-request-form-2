@@ -254,8 +254,14 @@ with tabs[2]:
         recommend_type = st.radio("추천 방식 선택", ["전체 TF-IDF", "피부타입 필터링", "클러스터 기반"], horizontal=True)
 
         if recommend_type == "피부타입 필터링":
-            skin = current_data.get("피부타입", "")
-            recommend_db = {k: v for k, v in recommend_db.items() if v.get("피부타입") == skin}
+            current_skin = st.session_state.form_db[current_id].get("피부타입", "")
+            filtered = {k: v for k, v in recommend_db.items() if v.get("피부타입") == current_skin and k != current_id}
+    
+            if len(filtered) < 2:
+                st.info("ℹ️ 유사 피부타입 처방이 충분하지 않아 전체 추천으로 대체됩니다.")
+            else:
+                recommend_db = filtered
+
 
         elif recommend_type == "클러스터 기반":
             try:
@@ -277,21 +283,30 @@ with tabs[2]:
                 kmeans = KMeans(n_clusters=4, random_state=42).fit(X)
                 cluster_map = {k: c for k, c in zip(keys, kmeans.labels_)}
                 current_cluster = cluster_map[current_id]
-                recommend_db = {k: v for k, v in recommend_db.items() if cluster_map.get(k) == current_cluster and k != current_id}
+                clustered = {k: v for k, v in recommend_db.items() if cluster_map.get(k, -1) == current_cluster and k != current_id}
+                if len(clustered) < 2:
+                    st.info("ℹ️ 클러스터 내 유사 처방이 부족하여 전체 추천으로 대체됩니다.")
+                else:
+                    recommend_db = clustered
+
             except Exception as e:
                 st.warning(f"⚠️ 클러스터링 실패: {e}")
 
         if len(recommend_db) < 2:
             st.warning("⚠️ 추천할 유사 처방이 충분하지 않습니다.")
         else:
-            results = recommend_tfidf(current_id, recommend_db)
-            st.markdown("#### 추천 결과:")
-            for rid, score in results:
-                r = recommend_db[rid]
-                with st.expander(f"🔍 {r['제품명']} ({score:.2f})"):
-                    st.markdown(f"- 제형: {r['제형']}")
-                    st.markdown(f"- 주요성분: {r['주요성분']}")
-                    st.markdown(f"- 사용감: {r['사용감']}")
+            if current_id not in recommend_db:
+                st.warning("⚠️ 추천 기준 처방이 추천 대상에서 제외되어 유사 추천이 불가능합니다.")
+                results = []
+            else:
+                results = recommend_tfidf(current_id, recommend_db)
+                st.markdown("#### 추천 결과:")
+                for rid, score in results:
+                    r = recommend_db[rid]
+                    with st.expander(f"🔍 {r['제품명']} ({score:.2f})"):
+                        st.markdown(f"- 제형: {r['제형']}")
+                        st.markdown(f"- 주요성분: {r['주요성분']}")
+                        st.markdown(f"- 사용감: {r['사용감']}")
 
 
 # 📋 요약 카드 탭 구현
