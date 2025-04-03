@@ -226,7 +226,7 @@ with tabs[2]:
         db = {}
         for _, row in df.iterrows():
             db[row["처방ID"]] = {
-                "제품명": row["처방명"],
+                "제품명": row["제품명"],
                 "제형": row["제형"],
                 "향": row["향"],
                 "기능성": row["기능성"].split(",") if isinstance(row["기능성"], str) else [],
