@@ -204,7 +204,7 @@ with tabs[1]:
             st.markdown(f"- **사용감**: {data['사용감']}")
             st.markdown(f"- **입력일**: {data['입력일']}")
             st.markdown(f"- **고객사**: {data['고객사']}")
-            st.markdown(f"- **샘플송부예정일**: {data['샘플송부예정일']}")
+            st.markdown(f"- **샘플 송부 요청일**: {data['샘플 송부 요청일']}")
 
         if st.checkbox("✏️ 수정하기"):
             data["제품명"] = st.text_input("제품명", value=data["제품명"])
