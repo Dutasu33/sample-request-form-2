@@ -218,6 +218,8 @@ with tabs[1]:
 # ✅ 추천 탭 구현 (더미처방 기반)
 with tabs[2]:
     st.subheader("🔁 유사 처방 추천")
+
+    # ✅ 추천 방식 선택 (중복 방지)
     recommend_type = st.radio("추천 방식 선택", ["전체 TF-IDF", "피부타입 필터링", "클러스터 기반"], horizontal=True)
 
     # ✅ 더미처방 불러오기 함수
@@ -244,79 +246,79 @@ with tabs[2]:
     if st.session_state.form_db:
         ids = list(st.session_state.form_db.keys())
         current_id = st.selectbox("기준 의뢰 선택", ids)
-
-        # 현재 등록된 의뢰를 기준으로 비교
         current_data = st.session_state.form_db[current_id]
 
         # 더미 DB에 현재 의뢰 추가
         recommend_db = dummy_db.copy()
         recommend_db[current_id] = current_data
 
-        recommend_type = st.radio(
-            "추천 방식 선택", 
-            ["전체 TF-IDF", "피부타입 필터링", "클러스터 기반"], 
-            horizontal=True,
-            key="recommend_method_radio"  # ✅ 고유 key 부여
-        )
-
-
         if recommend_type == "피부타입 필터링":
-            current_skin = st.session_state.form_db[current_id].get("피부타입", "")
+            current_skin = current_data.get("피부타입", "")
             filtered = {k: v for k, v in recommend_db.items() if v.get("피부타입") == current_skin and k != current_id}
-    
             if len(filtered) < 2:
                 st.info("ℹ️ 유사 피부타입 처방이 충분하지 않아 전체 추천으로 대체됩니다.")
             else:
                 recommend_db = filtered
-            if len(recommend_db) < 2:
-                st.warning("⚠️ 추천할 유사 처방이 충분하지 않습니다.")
-            elif current_id not in recommend_db:
-                st.warning("⚠️ 추천 기준 처방이 추천 대상에서 제외되어 유사 추천이 불가능합니다.")
-            else:
-                results = recommend_tfidf(current_id, recommend_db)
-                results = [(rid, s) for rid, s in results if rid != current_id]
 
-if recommend_type == "클러스터 기반":
-    try:
-        records, keys = [], []
-        for k, v in recommend_db.items():
-            records.append({
-                "피부타입": v.get("피부타입", ""),
-                "제형": v.get("제형", ""),
-                "비건": v.get("비건", ""),
-                "기능성": v.get("기능성", [])
-            })
-            keys.append(k)
+        elif recommend_type == "클러스터 기반":
+            try:
+                records, keys = [], []
+                for k, v in recommend_db.items():
+                    records.append({
+                        "피부타입": v.get("피부타입", ""),
+                        "제형": v.get("제형", ""),
+                        "비건": v.get("비건", ""),
+                        "기능성": v.get("기능성", [])
+                    })
+                    keys.append(k)
 
-        df = pd.DataFrame(records)
-        mlb = MultiLabelBinarizer()
-        func_encoded = mlb.fit_transform(df["기능성"])
-        encoded = pd.get_dummies(df.drop("기능성", axis=1))
-        X = pd.concat([encoded, pd.DataFrame(func_encoded)], axis=1)
-        X.columns = X.columns.astype(str)
+                df = pd.DataFrame(records)
+                mlb = MultiLabelBinarizer()
+                func_encoded = mlb.fit_transform(df["기능성"])
+                encoded = pd.get_dummies(df.drop("기능성", axis=1))
+                X = pd.concat([encoded, pd.DataFrame(func_encoded)], axis=1)
+                X.columns = X.columns.astype(str)
 
-        kmeans = KMeans(n_clusters=4, random_state=42).fit(X)
-        cluster_map = {k: c for k, c in zip(keys, kmeans.labels_)}
-        current_cluster = cluster_map.get(current_id, -1)
+                kmeans = KMeans(n_clusters=4, random_state=42).fit(X)
+                cluster_map = {k: c for k, c in zip(keys, kmeans.labels_)}
+                current_cluster = cluster_map.get(current_id, -1)
 
-        clustered = {
-            k: v for k, v in recommend_db.items()
-            if cluster_map.get(k, -1) == current_cluster and k != current_id
-        }
+                clustered = {
+                    k: v for k, v in recommend_db.items()
+                    if cluster_map.get(k, -1) == current_cluster and k != current_id
+                }
 
-        if len(clustered) < 2:
-            st.info("ℹ️ 클러스터 내 유사 처방이 부족하여 전체 추천으로 대체됩니다.")
+                if len(clustered) < 2:
+                    st.info("ℹ️ 클러스터 내 유사 처방이 부족하여 전체 추천으로 대체됩니다.")
+                else:
+                    recommend_db = clustered
+
+            except Exception as e:
+                st.warning(f"⚠️ 클러스터링 실패: {e}")
+
+        # ✅ 공통 결과 출력 로직
+        if len(recommend_db) < 2:
+            st.warning("⚠️ 추천할 유사 처방이 충분하지 않습니다.")
+        elif current_id not in recommend_db:
+            st.warning("⚠️ 추천 기준 처방이 추천 대상에서 제외되어 유사 추천이 불가능합니다.")
+            results = []
         else:
-            recommend_db = clustered
+            results = recommend_tfidf(current_id, recommend_db)
+            results = [(rid, s) for rid, s in results if rid != current_id]
+            st.markdown("#### 추천 결과:")
+            for rid, score in results:
+                r = recommend_db[rid]
+                with st.expander(f"🔍 {r['제품명']} ({score:.2f})"):
+                    st.markdown(f"- 제형: {r['제형']}")
+                    st.markdown(f"- 주요성분: {r['주요성분']}")
+                    st.markdown(f"- 사용감: {r['사용감']}")
 
-    except Exception as e:
-        st.warning(f"⚠️ 클러스터링 실패: {e}")
 
-    # ✅ 들여쓰기 오류 수정 및 전체 조건문 구조 보완
+    # ✅ 뒤여쓰기 오류 수정 및 전체 조건문 구조 복원
     if len(recommend_db) < 2:
-        st.warning("⚠️ 추천할 유사 처방이 충분하지 않습니다.")
+        st.warning("⚠️ 추천할 유사 차단이 충분하지 않습니다.")
     elif current_id not in recommend_db:
-        st.warning("⚠️ 추천 기준 처방이 추천 대상에서 제외되어 유사 추천이 불가능합니다.")
+        st.warning("⚠️ 추천 기준 차단이 추천 대상에서 제외되어서 유사 추천이 불가능합니다.")
         results = []
     else:
         results = recommend_tfidf(current_id, recommend_db)
@@ -328,6 +330,7 @@ if recommend_type == "클러스터 기반":
                 st.markdown(f"- 제형: {r['제형']}")
                 st.markdown(f"- 주요성분: {r['주요성분']}")
                 st.markdown(f"- 사용감: {r['사용감']}")
+
 
 
 
