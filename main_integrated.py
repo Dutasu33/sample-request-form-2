@@ -177,7 +177,7 @@ with tabs[0]:
                 "주요성분": ingredients, "기능성": functions, "사용감": feel,
                 "입력일": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "고객사": customer, "고객사담당자이메일": email1, "연구원대표이메일": email2,
-                "샘플송부예정일": sample_date
+                "샘플송부요청일": sample_date
             }
             st.success(f"✅ 의뢰 등록 완료! 등록번호: {pid}")
 # 🔍 조회/수정 탭 구현
@@ -263,7 +263,7 @@ with tabs[2]:
                 recommend_db = filtered
             if len(recommend_db) < 2:
                 st.warning("⚠️ 추천할 유사 처방이 충분하지 않습니다.")
-                elif current_id not in recommend_db:
+            elif current_id not in recommend_db:
                 st.warning("⚠️ 추천 기준 처방이 추천 대상에서 제외되어 유사 추천이 불가능합니다.")
             else:
                 results = recommend_tfidf(current_id, recommend_db)
