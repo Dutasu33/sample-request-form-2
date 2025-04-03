@@ -330,14 +330,9 @@ with tabs[2]:
                 if success:
                     st.success("✅ 이메일 전송 완료!")
 
+            # ✅ Google Sheets 저장 추가
+            if st.button("📊 시트 자동 저장"):
+                success = save_to_google_sheets(current_data)
+                if success:
+                    st.success("✅ Google Sheets 저장 완료!")
 
-
-# 📊 Google Sheets 저장 탭
-with tabs[6]:
-    st.subheader("📊 Google Sheets 저장")
-    if st.session_state.form_db:
-        selected = st.selectbox("저장할 의뢰 선택", list(st.session_state.form_db.keys()), key="sheets")
-        if st.button("📤 Google Sheets에 저장"):
-            success = save_to_google_sheets(st.session_state.form_db[selected])
-            if success:
-                st.success("✅ Google Sheets 저장 완료!")
