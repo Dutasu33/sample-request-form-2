@@ -215,58 +215,84 @@ with tabs[1]:
                 st.success("수정 완료")
 
 
-# 🔁 추천 탭 구현
+# ✅ 추천 탭 구현 (더미처방 기반)
 with tabs[2]:
     st.subheader("🔁 유사 처방 추천")
+
+    # ✅ 더미처방 불러오기 함수
+    @st.cache_data
+    def load_dummy_prescriptions():
+        df = pd.read_excel("더미처방100개.xlsx")
+        db = {}
+        for _, row in df.iterrows():
+            db[row["처방ID"]] = {
+                "제품명": row["처방명"],
+                "제형": row["제형"],
+                "향": row["향"],
+                "기능성": row["기능성"].split(",") if isinstance(row["기능성"], str) else [],
+                "주요성분": row["주요성분"],
+                "사용감": row.get("사용감설명", ""),
+                "피부타입": row.get("피부타입추천", ""),
+                "비건": row.get("비건여부", "N")
+            }
+        return db
+
+    # ✅ 더미 DB 불러오기
+    dummy_db = load_dummy_prescriptions()
+
     if st.session_state.form_db:
         ids = list(st.session_state.form_db.keys())
         current_id = st.selectbox("기준 의뢰 선택", ids)
+
+        # 현재 등록된 의뢰를 기준으로 비교
+        current_data = st.session_state.form_db[current_id]
+
+        # 더미 DB에 현재 의뢰 추가
+        recommend_db = dummy_db.copy()
+        recommend_db[current_id] = current_data
+
         recommend_type = st.radio("추천 방식 선택", ["전체 TF-IDF", "피부타입 필터링", "클러스터 기반"], horizontal=True)
-        recommend_db = st.session_state.form_db.copy()
 
         if recommend_type == "피부타입 필터링":
-            current_skin = st.session_state.form_db[current_id].get("피부타입", "")
-            recommend_db = {k: v for k, v in recommend_db.items() if v.get("피부타입") == current_skin and k != current_id}
+            skin = current_data.get("피부타입", "")
+            recommend_db = {k: v for k, v in recommend_db.items() if v.get("피부타입") == skin}
 
         elif recommend_type == "클러스터 기반":
             try:
-                records = []
-                keys = []
+                records, keys = [], []
                 for k, v in recommend_db.items():
-                    records.append({"피부타입": v.get("피부타입", ""), "제형": v.get("제형", ""), "비건": v.get("비건", ""), "기능성": v.get("기능성", [])})
+                    records.append({
+                        "피부타입": v.get("피부타입", ""),
+                        "제형": v.get("제형", ""),
+                        "비건": v.get("비건", ""),
+                        "기능성": v.get("기능성", [])
+                    })
                     keys.append(k)
                 df = pd.DataFrame(records)
                 mlb = MultiLabelBinarizer()
-                기능성_encoded = mlb.fit_transform(df["기능성"])
+                func_encoded = mlb.fit_transform(df["기능성"])
                 encoded = pd.get_dummies(df.drop("기능성", axis=1))
-                X = pd.concat([encoded, pd.DataFrame(기능성_encoded)], axis=1)
+                X = pd.concat([encoded, pd.DataFrame(func_encoded)], axis=1)
                 X.columns = X.columns.astype(str)
                 kmeans = KMeans(n_clusters=4, random_state=42).fit(X)
-                cluster_map = {id_: label for id_, label in zip(keys, kmeans.labels_)}
-                current_cluster = cluster_map.get(current_id, -1)
-                recommend_db = {k: v for k, v in recommend_db.items() if cluster_map.get(k, -1) == current_cluster and k != current_id}
+                cluster_map = {k: c for k, c in zip(keys, kmeans.labels_)}
+                current_cluster = cluster_map[current_id]
+                recommend_db = {k: v for k, v in recommend_db.items() if cluster_map.get(k) == current_cluster and k != current_id}
             except Exception as e:
-                st.warning(f"클러스터링 실패: {e}")
+                st.warning(f"⚠️ 클러스터링 실패: {e}")
 
-        results = recommend_tfidf(current_id, recommend_db)
         if len(recommend_db) < 2:
             st.warning("⚠️ 추천할 유사 처방이 충분하지 않습니다.")
         else:
             results = recommend_tfidf(current_id, recommend_db)
             st.markdown("#### 추천 결과:")
             for rid, score in results:
-                r = st.session_state.form_db[rid]
+                r = recommend_db[rid]
                 with st.expander(f"🔍 {r['제품명']} ({score:.2f})"):
                     st.markdown(f"- 제형: {r['제형']}")
                     st.markdown(f"- 주요성분: {r['주요성분']}")
                     st.markdown(f"- 사용감: {r['사용감']}")
 
-        for rid, score in results:
-            r = st.session_state.form_db[rid]
-            with st.expander(f"🔍 {r['제품명']} ({score:.2f})"):
-                st.markdown(f"- 제형: {r['제형']}  ")
-                st.markdown(f"- 주요성분: {r['주요성분']}  ")
-                st.markdown(f"- 사용감: {r['사용감']}  ")
 
 # 📋 요약 카드 탭 구현
 with tabs[3]:
