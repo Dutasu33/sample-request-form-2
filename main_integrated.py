@@ -220,32 +220,7 @@ with tabs[2]:
     st.subheader("🔁 유사 처방 추천")
 
     # ✅ 추천 방식 선택 (중복 방지)
-    recommend_type = st.radio("추천 방식 선택", ["전체 TF-IDF", "피부타입 필터링", "클러스터 기반"], horizontal=True)
-
-    # ✅ 더미처방 불러오기 함수
-    @st.cache_data
-    def load_dummy_prescriptions():
-        df = pd.read_excel("더미처방100개.xlsx")
-        db = {}
-        for _, row in df.iterrows():
-            db[row["처방ID"]] = {
-                "제품명": row["제품명"],
-                "제형": row["제형"],
-                "향": row["향"],
-                "기능성": row["기능성"].split(",") if isinstance(row["기능성"], str) else [],
-                "주요성분": row["주요성분"],
-                "사용감": row.get("사용감설명", ""),
-                "피부타입": row.get("피부타입추천", ""),
-                "비건": row.get("비건여부", "N")
-            }
-        return db
-
-# ✅ 추천 탭 구현 (더미처방 기반)
-with tabs[2]:
-    st.subheader("🔁 유사 처방 추천")
-
-    # ✅ 추천 방식 선택 (중복 방지)
-    recommend_type = st.radio("추천 방식 선택", ["전체 TF-IDF", "피부타입 필터링", "클러스터 기반"], horizontal=True)
+    recommend_type = st.radio("추천 방식 선택", ["전체 TF-IDF", "피부타입 필터링", "클러스터 기반"], horizontal=True, key="recommend_type")
 
     # ✅ 더미처방 불러오기 함수
     @st.cache_data
@@ -340,37 +315,21 @@ with tabs[2]:
                     st.markdown(f"- 사용감: {r['사용감']}")
                     st.markdown(f"- 샘플송부요청일: {r.get('샘플송부요청일', '-')}")
 
-
-
-        # 📋 요약 카드 탭 구현
-        with tabs[3]:
-            st.subheader("📋 요약 카드")
-            if st.session_state.form_db:
-                keys = list(st.session_state.form_db.keys())
-                selected = st.selectbox("요약 확인할 처방 선택", keys)
-                d = st.session_state.form_db[selected]
-                st.markdown(f"### ✅ {d['제품명']}")
-                st.markdown(f"- 제품유형: {d['제품유형']}")
-                st.markdown(f"- 제형: {d['제형']}")
-                st.markdown(f"- 향: {d['향']}")
-                st.markdown(f"- 주요성분: {d['주요성분']}")
-                st.markdown(f"- 사용감: {d['사용감']}")
-                st.markdown(f"- 기능성: {', '.join(d['기능성'])}")
-                st.markdown(f"- 포지셔닝: {d['포지셔닝']}")
-                st.markdown(f"- 고객사: {d['고객사']}")
-                st.markdown(f"- 샘플 송부 요청일: {d['샘플 송부 요청일']}")
-
-# 📄 PDF 생성 탭
+# ✅ PDF 및 이메일 로직에도 동일 추천 로직 적용 필요
+# PDF 탭 예시
 with tabs[4]:
     st.subheader("📄 PDF 생성")
     if st.session_state.form_db:
         selected = st.selectbox("PDF 생성할 의뢰 선택", list(st.session_state.form_db.keys()), key="pdf")
-        similar = recommend_tfidf(selected, st.session_state.form_db)
+        current_data = st.session_state.form_db[selected]
+        recommend_db = dummy_db.copy()
+        recommend_db[selected] = current_data
+        similar = recommend_tfidf(selected, recommend_db)
         if st.button("📄 PDF 생성"):
-            filename = create_pdf(selected, st.session_state.form_db[selected], similar)
+            filename = create_pdf(selected, current_data, similar)
             st.success(f"PDF 생성 완료: {filename}")
 
-# 📧 이메일 전송 탭
+# 이메일 탭 예시
 with tabs[5]:
     st.subheader("📧 이메일 전송")
     if st.session_state.form_db:
@@ -378,12 +337,15 @@ with tabs[5]:
         d = st.session_state.form_db[selected]
         subject = st.text_input("제목", value=f"[{d['제품명']}] 최종 의뢰서 전달드립니다")
         body = st.text_area("본문", value="안녕하세요. 최종 의뢰서를 첨부드립니다. 확인 부탁드립니다.")
-        similar = recommend_tfidf(selected, st.session_state.form_db)
+        recommend_db = dummy_db.copy()
+        recommend_db[selected] = d
+        similar = recommend_tfidf(selected, recommend_db)
         pdf_file = create_pdf(selected, d, similar)
         if st.button("📧 이메일 보내기"):
             success = send_email_with_pdf([d["고객사담당자이메일"], d["연구원대표이메일"]], subject, body, pdf_file)
             if success:
                 st.success("이메일 전송 완료")
+
 
 # 📊 Google Sheets 저장 탭
 with tabs[6]:
