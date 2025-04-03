@@ -240,6 +240,32 @@ with tabs[2]:
             }
         return db
 
+# ✅ 추천 탭 구현 (더미처방 기반)
+with tabs[2]:
+    st.subheader("🔁 유사 처방 추천")
+
+    # ✅ 추천 방식 선택 (중복 방지)
+    recommend_type = st.radio("추천 방식 선택", ["전체 TF-IDF", "피부타입 필터링", "클러스터 기반"], horizontal=True)
+
+    # ✅ 더미처방 불러오기 함수
+    @st.cache_data
+    def load_dummy_prescriptions():
+        df = pd.read_excel("더미처방100개.xlsx")
+        db = {}
+        for _, row in df.iterrows():
+            db[row["처방ID"]] = {
+                "제품명": row["제품명"],
+                "제형": row["제형"],
+                "향": row["향"],
+                "기능성": row["기능성"].split(",") if isinstance(row["기능성"], str) else [],
+                "주요성분": row["주요성분"],
+                "사용감": row.get("사용감설명", ""),
+                "피부타입": row.get("피부타입추천", ""),
+                "비건": row.get("비건여부", "N"),
+                "샘플송부요청일": row.get("샘플송부요청일", "")
+            }
+        return db
+
     # ✅ 더미 DB 불러오기
     dummy_db = load_dummy_prescriptions()
 
@@ -312,26 +338,7 @@ with tabs[2]:
                     st.markdown(f"- 제형: {r['제형']}")
                     st.markdown(f"- 주요성분: {r['주요성분']}")
                     st.markdown(f"- 사용감: {r['사용감']}")
-
-
-    # ✅ 뒤여쓰기 오류 수정 및 전체 조건문 구조 복원
-    if len(recommend_db) < 2:
-        st.warning("⚠️ 추천할 유사 차단이 충분하지 않습니다.")
-    elif current_id not in recommend_db:
-        st.warning("⚠️ 추천 기준 차단이 추천 대상에서 제외되어서 유사 추천이 불가능합니다.")
-        results = []
-    else:
-        results = recommend_tfidf(current_id, recommend_db)
-        results = [(rid, s) for rid, s in results if rid != current_id]
-        st.markdown("#### 추천 결과:")
-        for rid, score in results:
-            r = recommend_db[rid]
-            with st.expander(f"🔍 {r['제품명']} ({score:.2f})"):
-                st.markdown(f"- 제형: {r['제형']}")
-                st.markdown(f"- 주요성분: {r['주요성분']}")
-                st.markdown(f"- 사용감: {r['사용감']}")
-
-
+                    st.markdown(f"- 샘플송부요청일: {r.get('샘플송부요청일', '-')}")
 
 
 
