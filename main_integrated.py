@@ -315,36 +315,21 @@ with tabs[2]:
                     st.markdown(f"- 사용감: {r['사용감']}")
                     st.markdown(f"- 샘플송부요청일: {r.get('샘플송부요청일', '-')}")
 
-# ✅ PDF 및 이메일 로직에도 동일 추천 로직 적용 필요
-# PDF 탭 예시
-with tabs[4]:
-    st.subheader("📄 PDF 생성")
-    if st.session_state.form_db:
-        selected = st.selectbox("PDF 생성할 의뢰 선택", list(st.session_state.form_db.keys()), key="pdf")
-        current_data = st.session_state.form_db[selected]
-        recommend_db = dummy_db.copy()
-        recommend_db[selected] = current_data
-        similar = recommend_tfidf(selected, recommend_db)
-        if st.button("📄 PDF 생성"):
-            filename = create_pdf(selected, current_data, similar)
-            st.success(f"PDF 생성 완료: {filename}")
+            # ✅ PDF 자동 생성 + 다운로드 + 이메일 전송 버튼
+            filename = create_pdf(current_id, current_data, results)
+            with open(filename, "rb") as f:
+                st.download_button("📥 PDF 다운로드", data=f, file_name=filename, mime="application/pdf")
 
-# 이메일 탭 예시
-with tabs[5]:
-    st.subheader("📧 이메일 전송")
-    if st.session_state.form_db:
-        selected = st.selectbox("이메일 보낼 의뢰 선택", list(st.session_state.form_db.keys()), key="email")
-        d = st.session_state.form_db[selected]
-        subject = st.text_input("제목", value=f"[{d['제품명']}] 최종 의뢰서 전달드립니다")
-        body = st.text_area("본문", value="안녕하세요. 최종 의뢰서를 첨부드립니다. 확인 부탁드립니다.")
-        recommend_db = dummy_db.copy()
-        recommend_db[selected] = d
-        similar = recommend_tfidf(selected, recommend_db)
-        pdf_file = create_pdf(selected, d, similar)
-        if st.button("📧 이메일 보내기"):
-            success = send_email_with_pdf([d["고객사담당자이메일"], d["연구원대표이메일"]], subject, body, pdf_file)
-            if success:
-                st.success("이메일 전송 완료")
+            subject = f"[{current_data['제품명']}] 최종 의뢰서 전달드립니다"
+            body = "안녕하세요. 최종 의뢰서를 첨부드립니다. 확인 부탁드립니다."
+            if st.button("📧 이메일 자동 전송"):
+                success = send_email_with_pdf([
+                    current_data["고객사담당자이메일"],
+                    current_data["연구원대표이메일"]
+                ], subject, body, filename)
+                if success:
+                    st.success("✅ 이메일 전송 완료!")
+
 
 
 # 📊 Google Sheets 저장 탭
