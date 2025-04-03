@@ -217,7 +217,6 @@ with tabs[2]:
             st.warning("⚠️ 추천할 유사 처방이 충분하지 않습니다.")
         else:
             results = recommend_tfidf(current_id, recommend_db)
-        else:
             st.markdown("#### 추천 결과:")
             for rid, score in results:
                 r = st.session_state.form_db[rid]
