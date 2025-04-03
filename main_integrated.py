@@ -204,6 +204,7 @@ with tabs[2]:
                 mlb = MultiLabelBinarizer()
                 기능성_encoded = mlb.fit_transform(df["기능성"])
                 encoded = pd.get_dummies(df.drop("기능성", axis=1))
+                X = pd.concat([encoded, pd.DataFrame(기능성_encoded)], axis=1)
                 X.columns = X.columns.astype(str)
                 kmeans = KMeans(n_clusters=4, random_state=42).fit(X)
                 cluster_map = {id_: label for id_, label in zip(keys, kmeans.labels_)}
@@ -213,8 +214,10 @@ with tabs[2]:
                 st.warning(f"클러스터링 실패: {e}")
 
         results = recommend_tfidf(current_id, recommend_db)
-        if not results:
+        if len(recommend_db) < 2:
             st.warning("⚠️ 추천할 유사 처방이 충분하지 않습니다.")
+        else:
+            results = recommend_tfidf(current_id, recommend_db)
         else:
             st.markdown("#### 추천 결과:")
             for rid, score in results:
