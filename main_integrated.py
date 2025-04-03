@@ -14,6 +14,20 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
 
+# ✅ 더미처방 불러오기 (엑셀)
+dummy_df = pd.read_excel("더미처방100개.xlsx")
+dummy_db = {
+    f"dummy-{i+1:03d}": {
+        "제품명": row["제품명"],
+        "제형": row["제형"],
+        "향": row["향"],
+        "주요성분": row["주요성분"],
+        "사용감": row["사용감"],
+        "기능성": row["기능성"].split(';') if isinstance(row["기능성"], str) else []
+    }
+    for i, row in dummy_df.iterrows()
+}
+
 # 초기화
 if 'form_db' not in st.session_state:
     st.session_state.form_db = {}
@@ -28,17 +42,18 @@ def generate_prescription_id():
 def make_text(d):
     return f"{d.get('제품명','')} {d.get('제형','')} {d.get('향','')} {d.get('주요성분','')} {d.get('사용감','')} {' '.join(d.get('기능성', []))}"
 
-# TF-IDF 추천 함수
-def recommend_tfidf(current_id, db, top_n=3):
-    ids = list(db.keys())
-    texts = [make_text(db[i]) for i in ids]
-    if len(texts) <= 1 or all(len(t.strip()) == 0 for t in texts):
+# ✅ TF-IDF 추천 함수 (더미처방과 비교)
+def recommend_tfidf_against_dummy(current_data, dummy_db, top_n=3):
+    dummy_ids = list(dummy_db.keys())
+    dummy_texts = [make_text(dummy_db[i]) for i in dummy_ids]
+    current_text = make_text(current_data)
+
+    if not current_text.strip():
         return []
-    tfidf = TfidfVectorizer().fit_transform(texts)
-    sim = cosine_similarity(tfidf)
-    idx = ids.index(current_id)
-    scores = list(enumerate(sim[idx]))
-    ranked = sorted(((ids[i], s) for i, s in scores if i != idx), key=lambda x: x[1], reverse=True)
+
+    tfidf = TfidfVectorizer().fit_transform([current_text] + dummy_texts)
+    sim = cosine_similarity(tfidf[0:1], tfidf[1:])[0]
+    ranked = sorted(((dummy_ids[i], s) for i, s in enumerate(sim)), key=lambda x: x[1], reverse=True)
     return ranked[:top_n]
 
 # PDF 생성 함수
@@ -60,10 +75,15 @@ def create_pdf(prescription_id, data, similar_list):
         pdf.cell(200, 10, txt="\n[유사 추천 처방]", ln=True)
         pdf.set_font("Nanum", size=12)
         for rid, score in similar_list:
-            pdf.cell(200, 10, txt=f"{rid}: {st.session_state.form_db[rid]['제품명']} ({score:.2f})", ln=True)
+            pdf.cell(200, 10, txt=f"{rid}: {dummy_db[rid]['제품명']} ({score:.2f})", ln=True)
     filename = f"{prescription_id}_report.pdf"
     pdf.output(filename)
     return filename
+
+# 기존 코드는 유지하며 추천 호출 부분만 교체 필요:
+# results = recommend_tfidf(current_id, st.session_state.form_db)
+# → 아래로 교체:
+# results = recommend_tfidf_against_dummy(st.session_state.form_db[current_id], dummy_db)
 
 # 이메일 전송 함수
 def send_email_with_pdf(to_emails, subject, body, pdf_path):
