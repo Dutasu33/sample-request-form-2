@@ -41,6 +41,22 @@ def generate_prescription_id():
 # 추천 입력 텍스트 구성 함수
 def make_text(d):
     return f"{d.get('제품명','')} {d.get('제형','')} {d.get('향','')} {d.get('주요성분','')} {d.get('사용감','')} {' '.join(d.get('기능성', []))}"
+# ✅ 유사도 추천 함수 정의
+def recommend_tfidf(current_id, db, top_n=3):
+    ids = list(db.keys())
+    texts = [make_text(db[i]) for i in ids]
+
+    # 추천 대상이 1개 이하일 경우 예외 처리
+    if len(texts) <= 1 or all(len(t.strip()) == 0 for t in texts):
+        return []
+
+    tfidf = TfidfVectorizer().fit_transform(texts)
+    sim = cosine_similarity(tfidf)
+    idx = ids.index(current_id)
+    scores = list(enumerate(sim[idx]))
+    ranked = sorted(((ids[i], s) for i, s in scores if i != idx), key=lambda x: x[1], reverse=True)
+    return ranked[:top_n]
+
 
 # ✅ TF-IDF 추천 함수 (더미처방과 비교)
 def recommend_tfidf_against_dummy(current_data, dummy_db, top_n=3):
