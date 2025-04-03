@@ -252,7 +252,13 @@ with tabs[2]:
         recommend_db = dummy_db.copy()
         recommend_db[current_id] = current_data
 
-        recommend_type = st.radio("추천 방식 선택", ["전체 TF-IDF", "피부타입 필터링", "클러스터 기반"], horizontal=True)
+        recommend_type = st.radio(
+            "추천 방식 선택", 
+            ["전체 TF-IDF", "피부타입 필터링", "클러스터 기반"], 
+            horizontal=True,
+            key="recommend_method_radio"  # ✅ 고유 key 부여
+        )
+
 
         if recommend_type == "피부타입 필터링":
             current_skin = st.session_state.form_db[current_id].get("피부타입", "")
