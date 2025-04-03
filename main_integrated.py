@@ -261,7 +261,13 @@ with tabs[2]:
                 st.info("ℹ️ 유사 피부타입 처방이 충분하지 않아 전체 추천으로 대체됩니다.")
             else:
                 recommend_db = filtered
-
+            if len(recommend_db) < 2:
+                st.warning("⚠️ 추천할 유사 처방이 충분하지 않습니다.")
+                elif current_id not in recommend_db:
+                st.warning("⚠️ 추천 기준 처방이 추천 대상에서 제외되어 유사 추천이 불가능합니다.")
+            else:
+                results = recommend_tfidf(current_id, recommend_db)
+                results = [(rid, s) for rid, s in results if rid != current_id]
 
         elif recommend_type == "클러스터 기반":
             try:
@@ -274,16 +280,23 @@ with tabs[2]:
                         "기능성": v.get("기능성", [])
                     })
                     keys.append(k)
+
                 df = pd.DataFrame(records)
                 mlb = MultiLabelBinarizer()
                 func_encoded = mlb.fit_transform(df["기능성"])
                 encoded = pd.get_dummies(df.drop("기능성", axis=1))
                 X = pd.concat([encoded, pd.DataFrame(func_encoded)], axis=1)
                 X.columns = X.columns.astype(str)
+
                 kmeans = KMeans(n_clusters=4, random_state=42).fit(X)
                 cluster_map = {k: c for k, c in zip(keys, kmeans.labels_)}
-                current_cluster = cluster_map[current_id]
-                clustered = {k: v for k, v in recommend_db.items() if cluster_map.get(k, -1) == current_cluster and k != current_id}
+                current_cluster = cluster_map.get(current_id, -1)
+
+                clustered = {
+                    k: v for k, v in recommend_db.items()
+                    if cluster_map.get(k, -1) == current_cluster and k != current_id
+                }
+
                 if len(clustered) < 2:
                     st.info("ℹ️ 클러스터 내 유사 처방이 부족하여 전체 추천으로 대체됩니다.")
                 else:
@@ -294,38 +307,39 @@ with tabs[2]:
 
         if len(recommend_db) < 2:
             st.warning("⚠️ 추천할 유사 처방이 충분하지 않습니다.")
+        elif current_id not in recommend_db:
+            st.warning("⚠️ 추천 기준 처방이 추천 대상에서 제외되어 유사 추천이 불가능합니다.")
+            results = []
         else:
-            if current_id not in recommend_db:
-                st.warning("⚠️ 추천 기준 처방이 추천 대상에서 제외되어 유사 추천이 불가능합니다.")
-                results = []
-            else:
-                results = recommend_tfidf(current_id, recommend_db)
-                st.markdown("#### 추천 결과:")
-                for rid, score in results:
-                    r = recommend_db[rid]
-                    with st.expander(f"🔍 {r['제품명']} ({score:.2f})"):
-                        st.markdown(f"- 제형: {r['제형']}")
-                        st.markdown(f"- 주요성분: {r['주요성분']}")
-                        st.markdown(f"- 사용감: {r['사용감']}")
+            results = recommend_tfidf(current_id, recommend_db)
+            results = [(rid, s) for rid, s in results if rid != current_id]
+            st.markdown("#### 추천 결과:")
+            for rid, score in results:
+                r = recommend_db[rid]
+                with st.expander(f"🔍 {r['제품명']} ({score:.2f})"):
+                    st.markdown(f"- 제형: {r['제형']}")
+                    st.markdown(f"- 주요성분: {r['주요성분']}")
+                    st.markdown(f"- 사용감: {r['사용감']}")
 
 
-# 📋 요약 카드 탭 구현
-with tabs[3]:
-    st.subheader("📋 요약 카드")
-    if st.session_state.form_db:
-        keys = list(st.session_state.form_db.keys())
-        selected = st.selectbox("요약 확인할 처방 선택", keys)
-        d = st.session_state.form_db[selected]
-        st.markdown(f"### ✅ {d['제품명']}")
-        st.markdown(f"- 제품유형: {d['제품유형']}")
-        st.markdown(f"- 제형: {d['제형']}")
-        st.markdown(f"- 향: {d['향']}")
-        st.markdown(f"- 주요성분: {d['주요성분']}")
-        st.markdown(f"- 사용감: {d['사용감']}")
-        st.markdown(f"- 기능성: {', '.join(d['기능성'])}")
-        st.markdown(f"- 포지셔닝: {d['포지셔닝']}")
-        st.markdown(f"- 고객사: {d['고객사']}")
-        st.markdown(f"- 샘플송부예정일: {d['샘플송부예정일']}")
+
+        # 📋 요약 카드 탭 구현
+        with tabs[3]:
+            st.subheader("📋 요약 카드")
+            if st.session_state.form_db:
+                keys = list(st.session_state.form_db.keys())
+                selected = st.selectbox("요약 확인할 처방 선택", keys)
+                d = st.session_state.form_db[selected]
+                st.markdown(f"### ✅ {d['제품명']}")
+                st.markdown(f"- 제품유형: {d['제품유형']}")
+                st.markdown(f"- 제형: {d['제형']}")
+                st.markdown(f"- 향: {d['향']}")
+                st.markdown(f"- 주요성분: {d['주요성분']}")
+                st.markdown(f"- 사용감: {d['사용감']}")
+                st.markdown(f"- 기능성: {', '.join(d['기능성'])}")
+                st.markdown(f"- 포지셔닝: {d['포지셔닝']}")
+                st.markdown(f"- 고객사: {d['고객사']}")
+                st.markdown(f"- 샘플송부예정일: {d['샘플송부예정일']}")
 
 # 📄 PDF 생성 탭
 with tabs[4]:
