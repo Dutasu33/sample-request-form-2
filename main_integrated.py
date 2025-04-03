@@ -269,7 +269,7 @@ with tabs[2]:
                 results = recommend_tfidf(current_id, recommend_db)
                 results = [(rid, s) for rid, s in results if rid != current_id]
 
-elif recommend_type == "클러스터 기반":
+if recommend_type == "클러스터 기반":
     try:
         records, keys = [], []
         for k, v in recommend_db.items():
