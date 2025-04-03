@@ -46,6 +46,8 @@ def create_pdf(prescription_id, data, similar_list):
     pdf = FPDF()
     pdf.add_page()
     pdf.add_font("Nanum", "", "NanumGothic.ttf", uni=True)
+    pdf.add_font("Nanum", "B", "NanumGothic.ttf", uni=True)  # ⬅️ 반드시 추가하세요
+    pdf.add_font("Nanum", "", "NanumGothic.ttf", uni=True)
     pdf.set_font("Nanum", size=12)
     pdf.cell(200, 10, txt=f"{data.get('고객사', '')} - {data.get('제품명', '')} 최종 의뢰서", ln=True, align='C')
     pdf.ln(10)
