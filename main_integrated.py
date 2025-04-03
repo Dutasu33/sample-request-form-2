@@ -351,7 +351,7 @@ with tabs[2]:
                 st.markdown(f"- 기능성: {', '.join(d['기능성'])}")
                 st.markdown(f"- 포지셔닝: {d['포지셔닝']}")
                 st.markdown(f"- 고객사: {d['고객사']}")
-                st.markdown(f"- 샘플송부예정일: {d['샘플송부예정일']}")
+                st.markdown(f"- 샘플 송부 요청일: {d['샘플 송부 요청일']}")
 
 # 📄 PDF 생성 탭
 with tabs[4]:
