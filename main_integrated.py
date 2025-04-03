@@ -269,57 +269,58 @@ with tabs[2]:
                 results = recommend_tfidf(current_id, recommend_db)
                 results = [(rid, s) for rid, s in results if rid != current_id]
 
-        elif recommend_type == "클러스터 기반":
-            try:
-                records, keys = [], []
-                for k, v in recommend_db.items():
-                    records.append({
-                        "피부타입": v.get("피부타입", ""),
-                        "제형": v.get("제형", ""),
-                        "비건": v.get("비건", ""),
-                        "기능성": v.get("기능성", [])
-                    })
-                    keys.append(k)
+elif recommend_type == "클러스터 기반":
+    try:
+        records, keys = [], []
+        for k, v in recommend_db.items():
+            records.append({
+                "피부타입": v.get("피부타입", ""),
+                "제형": v.get("제형", ""),
+                "비건": v.get("비건", ""),
+                "기능성": v.get("기능성", [])
+            })
+            keys.append(k)
 
-                df = pd.DataFrame(records)
-                mlb = MultiLabelBinarizer()
-                func_encoded = mlb.fit_transform(df["기능성"])
-                encoded = pd.get_dummies(df.drop("기능성", axis=1))
-                X = pd.concat([encoded, pd.DataFrame(func_encoded)], axis=1)
-                X.columns = X.columns.astype(str)
+        df = pd.DataFrame(records)
+        mlb = MultiLabelBinarizer()
+        func_encoded = mlb.fit_transform(df["기능성"])
+        encoded = pd.get_dummies(df.drop("기능성", axis=1))
+        X = pd.concat([encoded, pd.DataFrame(func_encoded)], axis=1)
+        X.columns = X.columns.astype(str)
 
-                kmeans = KMeans(n_clusters=4, random_state=42).fit(X)
-                cluster_map = {k: c for k, c in zip(keys, kmeans.labels_)}
-                current_cluster = cluster_map.get(current_id, -1)
+        kmeans = KMeans(n_clusters=4, random_state=42).fit(X)
+        cluster_map = {k: c for k, c in zip(keys, kmeans.labels_)}
+        current_cluster = cluster_map.get(current_id, -1)
 
-                clustered = {
-                    k: v for k, v in recommend_db.items()
-                    if cluster_map.get(k, -1) == current_cluster and k != current_id
-                }
+        clustered = {
+            k: v for k, v in recommend_db.items()
+            if cluster_map.get(k, -1) == current_cluster and k != current_id
+        }
 
-                if len(clustered) < 2:
-                    st.info("ℹ️ 클러스터 내 유사 처방이 부족하여 전체 추천으로 대체됩니다.")
-                else:
-                    recommend_db = clustered
-
-            except Exception as e:
-                st.warning(f"⚠️ 클러스터링 실패: {e}")
-
-        if len(recommend_db) < 2:
-            st.warning("⚠️ 추천할 유사 처방이 충분하지 않습니다.")
-        elif current_id not in recommend_db:
-            st.warning("⚠️ 추천 기준 처방이 추천 대상에서 제외되어 유사 추천이 불가능합니다.")
-            results = []
+        if len(clustered) < 2:
+            st.info("ℹ️ 클러스터 내 유사 처방이 부족하여 전체 추천으로 대체됩니다.")
         else:
-            results = recommend_tfidf(current_id, recommend_db)
-            results = [(rid, s) for rid, s in results if rid != current_id]
-            st.markdown("#### 추천 결과:")
-            for rid, score in results:
-                r = recommend_db[rid]
-                with st.expander(f"🔍 {r['제품명']} ({score:.2f})"):
-                    st.markdown(f"- 제형: {r['제형']}")
-                    st.markdown(f"- 주요성분: {r['주요성분']}")
-                    st.markdown(f"- 사용감: {r['사용감']}")
+            recommend_db = clustered
+
+    except Exception as e:
+        st.warning(f"⚠️ 클러스터링 실패: {e}")
+
+    if len(recommend_db) < 2:
+        st.warning("⚠️ 추천할 유사 처방이 충분하지 않습니다.")
+    elif current_id not in recommend_db:
+        st.warning("⚠️ 추천 기준 처방이 추천 대상에서 제외되어 유사 추천이 불가능합니다.")
+        results = []
+    else:
+        results = recommend_tfidf(current_id, recommend_db)
+        results = [(rid, s) for rid, s in results if rid != current_id]
+        st.markdown("#### 추천 결과:")
+        for rid, score in results:
+            r = recommend_db[rid]
+            with st.expander(f"🔍 {r['제품명']} ({score:.2f})"):
+                st.markdown(f"- 제형: {r['제형']}")
+                st.markdown(f"- 주요성분: {r['주요성분']}")
+                st.markdown(f"- 사용감: {r['사용감']}")
+
 
 
 
